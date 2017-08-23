@@ -1,0 +1,89 @@
+void CRWExcel::WriteToExcel()
+{
+  CDatabase database;
+  CString sDriver = "MICROSOFT EXCEL DRIVER (*.XLS)"; // Excel安装驱动
+  CString sExcelFile = "c:\\demo.xls";                // 要建立的Excel文件
+  CString sSql;
+    
+  TRY
+  {
+    // 创建进行存取的字符串
+    sSql.Format("DRIVER={%s};DSN='''';FIRSTROWHASNAMES=1;READONLY=FALSE;CREATE_DB=\"%s\";DBQ=%s",
+                sDriver, sExcelFile, sExcelFile);
+    // 创建数据库 (既Excel表格文件)
+    if( database.OpenEx(sSql,CDatabase::noOdbcDialog) )
+    {
+      // 创建表结构(姓名、年龄)
+      sSql = "CREATE TABLE demo (Name TEXT,Age NUMBER)";
+      database.ExecuteSQL(sSql);
+      // 插入数值
+      sSql = "INSERT INTO demo (Name,Age) VALUES (''徐景周'',26)";
+      database.ExecuteSQL(sSql);
+      sSql = "INSERT INTO demo (Name,Age) VALUES (''徐志慧'',22)";
+      database.ExecuteSQL(sSql);
+      sSql = "INSERT INTO demo (Name,Age) VALUES (''郭徽'',27)";
+      database.ExecuteSQL(sSql);
+    }      
+    // 关闭数据库
+    database.Close();
+  }
+  CATCH_ALL(e)
+  {
+    TRACE1("Excel驱动没有安装: %s",sDriver);
+  }
+  END_CATCH_ALL;
+}
+// 读取Excel文件
+void CRWExcel::ReadFromExcel() 
+{
+    CDatabase database;
+    CString sSql;
+    CString sItem1, sItem2;
+    CString sDriver;
+    CString sDsn;
+    CString sFile = "Demo.xls"; 			// 将被读取的Excel文件名
+                                     
+    // 检索是否安装有Excel驱动 "Microsoft Excel Driver (*.xls)" 
+    sDriver = GetExcelDriver();
+    if (sDriver.IsEmpty())
+    {
+        // 没有发现Excel驱动
+        AfxMessageBox("没有安装Excel驱动!");
+        return;
+    }
+    
+    // 创建进行存取的字符串
+    sDsn.Format("ODBC;DRIVER={%s};DSN='''';DBQ=%s", sDriver, sFile);
+    TRY
+    {
+        // 打开数据库(既Excel文件)
+        database.Open(NULL, false, false, sDsn);
+        
+        CRecordset recset(&database);
+        // 设置读取的查询语句.
+        sSql = "SELECT Name, Age "       
+               "FROM demo "                 
+               "ORDER BY Name ";
+    
+        // 执行查询语句
+        recset.Open(CRecordset::forwardOnly, sSql, CRecordset::readOnly);
+        // 获取查询结果
+        while (!recset.IsEOF())
+        {
+            //读取Excel内部数值
+            recset.GetFieldValue("Name ", sItem1);
+            recset.GetFieldValue("Age", sItem2);
+            // 移到下一行
+            recset.MoveNext();
+        }
+        // 关闭数据库
+        database.Close();
+                             
+    }
+    CATCH(CDBException, e)
+    {
+        // 数据库操作产生异常时...
+        AfxMessageBox("数据库错误: " + e->m_strError);
+    }
+    END_CATCH;
+}
